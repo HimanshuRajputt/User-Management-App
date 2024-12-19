@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Email Form</title>
+  </head>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      padding-top: 15rem;
+      flex-direction: column;
+      align-items: center;
+    }
+    .email-container {
+      margin-bottom: 10px;
+    }
+    .email-input {
+      margin-bottom: 5px;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+
+<script
+  crossorigin
+  src="https://unpkg.com/react@18/umd/react.development.js"
+></script>
+<script
+  crossorigin
+  src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.7.8/axios.min.js"></script>
+
+<script type="text/babel">
+  const firebaseUrl = "https://usermanagementreact-dc596-default-rtdb.firebaseio.com/users.json"; 
+
+    const {useState,useEffect}= React
+
+  function AppTaskList() {
+    const [users, setUsers] = useState([]);
+    const [name, setName] = useState(""); 
+    const [email, setEmail] = useState(""); 
+    const [error, setError] = useState(""); 
+    const [editUserId, setEditUserId] =useState(null); 
+
+    const fetchUsers = () => {
+      axios
+        .get(firebaseUrl)
+        .then((response) => {
+          const fetchedUsers = response.data
+            ? Object.keys(response.data).map((id) => ({
+                id,
+                ...response.data[id],
+              }))
+            : [];
+          setUsers(fetchedUsers); 
+        })
+        .catch((error) => console.error("Error fetching users:", error));
+    };
+
+    useEffect(() => {
+      fetchUsers(); 
+    }, []);
+
+    const handleAddUser = (e) => {
+      e.preventDefault();
+
+      if (!name || !email) {
+        setError("Name and Email are required");
+        return;
+      }
+
+      const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailPattern.test(email)) {
+        setError("Invalid Email Format");
+        return;
+      }
+
+      const newUser = { name, email };
+
+      axios
+        .post(firebaseUrl, newUser)
+        .then(() => {
+          setName(""); 
+          setEmail("");
+          setError(""); 
+          fetchUsers(); 
+        })
+        .catch((error) => console.error("Error adding user:", error));
+    };
+
+  
+    const handleEditUser = (userId) => {
+      const userToEdit = users.find((user) => user.id === userId);
+      setName(userToEdit.name);
+      setEmail(userToEdit.email);
+      setEditUserId(userId);
+    };
+
+    
+    const handleUpdateUser = (e) => {
+      e.preventDefault();
+
+      if (!name || !email) {
+        setError("Name and Email are required");
+        return;
+      }
+
+      const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailPattern.test(email)) {
+        setError("Invalid Email Format");
+        return;
+      }
+
+      const updatedUser = { name, email };
+
+      axios
+        .patch(
+          `https://usermanagementreact-dc596-default-rtdb.firebaseio.com/users/${editUserId}.json`,
+          updatedUser
+        )
+        .then(() => {
+          setName("");
+          setEmail("");
+          setError("");
+          setEditUserId(null); 
+          fetchUsers(); 
+        })
+        .catch((error) => console.error("Error updating user:", error));
+    };
+
+    // Delete User function
+    const handleDeleteUser = (userId) => {
+      axios
+        .delete(
+          `https://usermanagementreact-dc596-default-rtdb.firebaseio.com/users/${userId}.json`
+        )
+        .then(() => {
+          fetchUsers(); // Refresh users list
+        })
+        .catch((error) => console.error("Error deleting user:", error));
+    };
+
+    return (
+      <div>
+        <h1>User Management</h1>
+
+        <form onSubmit={editUserId ? handleUpdateUser : handleAddUser}>
+          <div>
+            <label>Name: </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label>Email: </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          {error && <p style={{ color: "red" }}>{error}</p>}
+          <button type="submit">
+            {editUserId ? "Update User" : "Add User"}
+          </button>
+        </form>
+
+        <h2>Users List</h2>
+        <ul>
+          {users.map((user) => (
+            <li key={user.id}>
+              <p>
+                Name: {user.name}, Email: {user.email}
+              </p>
+              <button onClick={() => handleEditUser(user.id)}>Edit</button>
+              <button onClick={() => handleDeleteUser(user.id)}>Delete</button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  const root = ReactDOM.createRoot(document.getElementById("root"));
+  root.render(<AppTaskList />);
+</script>
